@@ -6,6 +6,8 @@ function BitwigController() {
   this.sysexHeader = 'F0 00 20 29 67';
   this.tracksPerPage = 8;
   this.trackBankPage = 0;
+  this.tracks = [{}, {}, {}, {}, {}, {}, {}, {}];
+  this.master = {};
 
   // Device state values.
   this.shiftPressed = false;
@@ -16,6 +18,7 @@ function BitwigController() {
   this.mixerPage = 0;
   this.mixerPages = ['Mixer', 'Pan', 'Send', 'Record', 'Solo', 'Mute'];
   this.dawMode = false;
+  this.faderButtonMode = 'mute';
 
   this.pad1Pressed = false;
   this.pad2Pressed = false;
@@ -35,6 +38,9 @@ function BitwigController() {
   this.midiRotary7Value = 0;
   this.midiRotary8Value = 0;
 
+  this.mutes = [];
+  this.solos = [];
+
   // TODO documentation
   this.defaultVelocityTranslationTable = [];
   this.silentVelocityTranslationTable = [];
@@ -45,7 +51,7 @@ function BitwigController() {
 
   this.device = {
     vendor:           'Novation',
-    name:             'Impulse 25',
+    name:             'Impulse 49',
     version:          '1.1',
     uuid:             '3B1F8670-2433-11E2-81C1-0800200C9A66',
     numMidiOutPorts:  2,
@@ -75,6 +81,8 @@ function BitwigController() {
     record:         32,
     midiMode:       33,
     mixerMode:      34,
+    bankUp:         35,
+    bankDown:       36,
     nextTrack:      37,
     prevTrack:      38,
     shift:          39
@@ -152,6 +160,10 @@ function BitwigController() {
     this.transport = host.createTransport();
     this.application = host.createApplication();
 
+    this.trackBank.addChannelCountObserver(function(count) {
+        controller.trackBankSize = count;
+    });
+
     /*
     var actions = this.application.getActions();
     for (var property in actions) {
@@ -173,13 +185,74 @@ function BitwigController() {
 
     this.cursorTrack.addPositionObserver(function(index) {
       controller.activeTrack = parseInt(index, 10);
-      controller.scrollToTrackBankPage();
+//      controller.scrollToTrackBankPage();
     });
 
     this.cursorDevice.addNameObserver(20, 'none', function(name) {
       host.showPopupNotification(name);
 
     });
+
+    for (var i=0;i<this.tracksPerPage;i++) {
+      track = this.trackBank.getChannel(i);
+      track.addPositionObserver(function(i) {
+        return function(value) {
+          controller.tracks[i].position = value;
+        }
+      }(i));
+    }
+
+    for (var i=0;i<this.tracksPerPage;i++) {
+      track = this.trackBank.getChannel(i);
+      track.addTrackTypeObserver(10, "Empty", function(i) {
+
+        return function(value) {
+          var el = controller.tracks[i] || {};
+          controller.tracks[i].type = value;
+          controller.printTracks();
+          controller.refreshFaderButtons();
+        }
+      }(i));
+    }
+
+    for (var i=0;i<this.tracksPerPage;i++) {
+      track = this.trackBank.getChannel(i);
+      track.getMute().addValueObserver(function(i) {
+        return function(value) {
+          controller.tracks[i].mute = value;
+          controller.refreshFaderButtons();
+        }
+      }(i));
+    }
+
+    this.mainTrack.getMute().addValueObserver(function(value) {
+      controller.master.mute = value;
+      controller.refreshFaderButtons();
+    });
+
+    for (var i=0;i<this.tracksPerPage;i++) {
+      track = this.trackBank.getChannel(i);
+      track.getSolo().addValueObserver(function(i) {
+        return function(value) {
+          controller.tracks[i].solo = value;
+          controller.refreshFaderButtons();
+        }
+      }(i));
+    }
+
+    this.mainTrack.getSolo().addValueObserver(function(value) {
+      controller.master.solo = value;
+      controller.refreshFaderButtons();
+    });
+
+    for (var i=0;i<this.tracksPerPage;i++) {
+      track = this.trackBank.getChannel(i);
+      track.addNameObserver(10, "-", function(i) {
+        return function(value) {
+          controller.tracks[i].name = value;
+        }
+      }(i));
+    }
 
     this.notifications = host.getNotificationSettings();
 
@@ -193,6 +266,23 @@ function BitwigController() {
     this.notifications.setShouldShowValueNotifications(true);
   };
 
+  this.printTracks = function() {
+//    return;
+    println("---")
+    println("master: (" +
+        (controller.master.mute ? 'M' : '') +
+        (controller.master.solo ? 'S' : '') + ")")
+    for (var i = 0; i < this.tracksPerPage; i++) {
+      var track = controller.tracks[i];
+      println(
+        "track: " + (i + 1) + ", " +
+        "name: " + track.name + ", " +
+        "type: " + track.type + ", " +
+        "pos: " + track.position + ", (" +
+        (track.mute ? 'M' : '') +
+        (track.solo ? 'S' : '') + ")")
+    }
+  }
 
   this.highlightModifyableTracks = function() {
     var track, send;
@@ -294,5 +384,52 @@ function BitwigController() {
       this.cursorTrack.getPrimaryInstrument().getMacro(i).getAmount().setIndication(value);
       this.cursorDevice.getParameter(i).setIndication(value && this.shiftPressed);
     }
+  };
+
+  this.trackType = function(track) {
+    return controller.tracks[track].type;
+  }
+
+  this.refreshFaderButtons = function() {
+    if (controller.faderButtonMode == 'mute') {
+      sendMidi(0xb0, 17, controller.master.mute ? 0 : 1);
+
+      for (var i = 0; i < controller.tracksPerPage; i++) {
+        var type = controller.trackType(i);
+        switch(type) {
+          case 'Master':
+          case 'Empty':
+            sendMidi(0xb0, 9 + i, 0);
+            break;
+
+          default:
+            sendMidi(0xb0, 9 + i, controller.tracks[i].mute ? 0 : 1);
+            break;
+        }
+      }
+    }
+    if (controller.faderButtonMode == 'solo') {
+      sendMidi(0xb0, 17, controller.master.solo ? 1 : 0);
+
+      for (var i = 0; i < controller.tracksPerPage; i++) {
+        var type = controller.trackType(i);
+        switch(type) {
+          case 'Master':
+          case 'Empty':
+            sendMidi(0xb0, 9 + i, 0);
+            break;
+
+          default:
+            sendMidi(0xb0, 9 + i, controller.tracks[i].solo ? 1 : 0);
+            break;
+        }
+      }
+    }
+  };
+
+  this.faderButtonModeChange = function(mode) {
+    controller.faderButtonMode = mode;
+    controller.refreshFaderButtons();
+    controller.printTracks();
   };
 }

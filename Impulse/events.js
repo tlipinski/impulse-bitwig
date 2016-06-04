@@ -9,8 +9,14 @@ function ImpulseEvents(template, controller) {
     }
     else if (isChannelController(status)) {
       // TODO: Add fader codes for 49 and 61 key versions.
-      if (0 === MIDIChannel(status) && (data1 == faders.channel || data1 == faders.master)) {
+      if (0 === MIDIChannel(status) && (data1 == faders.channel || (0 <= data1 && data1 <= 8))) {
         return 'fader';
+      }
+      else if (0 === MIDIChannel(status) && 9 <= data1 && data1 <= 17) {
+        return 'mute-solo';
+      }
+      else if (data1 == 34) {
+        return 'muteSoloToggle';
       }
       else if (
         data1 == buttons.play ||
@@ -26,6 +32,8 @@ function ImpulseEvents(template, controller) {
         data1 == buttons.midi ||
         data1 == buttons.nextTrack ||
         data1 == buttons.prevTrack ||
+        data1 == buttons.bankUp ||
+        data1 == buttons.bankDown ||
         data1 == buttons.midiMode ||
         data1 == buttons.mixerMode ||
         data1 == buttons.shift) {
@@ -65,13 +73,49 @@ function ImpulseEvents(template, controller) {
   this.handleFaderChange = function(status, data1, data2) {
     var target;
 
+    var faderIdx = data1;
+
     if ('mixer' == controller.rotaryState || controller.shiftPressed) {
       target = controller.mainTrack;
     }
-    else {
-      target = controller.trackBank.getChannel(controller.activeTrack);
+    else if (data1 == faders.master) {
+      target = controller.mainTrack;
     }
-    target.getVolume().set(data2, 128);
+    else {
+      var type = controller.trackType(faderIdx);
+      if (type != 'Master') {
+        target = controller.trackBank.getChannel(data1);
+      }
+    }
+    target && target.getVolume().set(data2, 128);
+  };
+
+  this.handleMuteChange = function(status, data1, data2) {
+    if (data2 == 1) {
+      var buttonIdx = data1 - 9;
+      if (buttonIdx == 8) {
+        controller.mainTrack.getMute().toggle();
+        return;
+      }
+      var type = controller.trackType(buttonIdx);
+      if (type != 'Master') {
+        controller.trackBank.getChannel(buttonIdx).getMute().toggle();
+      }
+    }
+  };
+
+  this.handleSoloChange = function(status, data1, data2) {
+    if (data2 == 1) {
+      var buttonIdx = data1 - 9;
+      if (buttonIdx == 8) {
+        controller.mainTrack.getSolo().toggle();
+        return;
+      }
+      var type = controller.trackType(buttonIdx);
+      if (type != 'Master') {
+        controller.trackBank.getChannel(buttonIdx).getSolo().toggle();
+      }
+    }
   };
 
   this.handleRotaryChange = function(status, data1, data2) {
@@ -284,6 +328,20 @@ function ImpulseEvents(template, controller) {
         controller.rotaryState = 'midi';
         controller.highlightModifyableTracks();
         controller.setPluginIndications(false);
+        break;
+
+      case buttons.bankUp:
+        controller.trackBankPage = Math.max(0, controller.trackBankPage - 1);
+        controller.trackBank.scrollTracksPageUp();
+        controller.displayText("Bank " + (controller.trackBankPage + 1))
+        host.showPopupNotification("Track Bank: " + (controller.trackBankPage + 1));
+        break;
+
+      case buttons.bankDown:
+        controller.trackBankPage = controller.trackBankPage + 1;
+        controller.trackBank.scrollTracksPageDown();
+        controller.displayText("Bank " + (controller.trackBankPage + 1))
+        host.showPopupNotification("Track Bank: " + (controller.trackBankPage + 1));
         break;
 
       case buttons.pageUp:
@@ -500,6 +558,14 @@ function ImpulseEvents(template, controller) {
     }
   };
 
+  this.handleMuteSoloToggle = function(value) {
+    if (value == 0) {
+      controller.faderButtonModeChange('solo');
+    } else if (value == 1) {
+      controller.faderButtonModeChange('mute');
+    }
+  };
+
   this.handleShiftPress = function(value) {
     value = !!value; // Convert to boolean
     controller.shiftPressed = value;
@@ -535,6 +601,18 @@ function ImpulseEvents(template, controller) {
 
         case 'rotary':
           this.handleRotaryChange(status, data1, data2);
+          break;
+
+        case 'muteSoloToggle':
+          this.handleMuteSoloToggle(data2);
+          break;
+
+        case 'mute-solo':
+          if (controller.faderButtonMode == 'mute') {
+            this.handleMuteChange(status, data1, data2);
+          } else if (controller.faderButtonMode == 'solo') {
+            this.handleSoloChange(status, data1, data2);
+          }
           break;
 
         case 'button':
