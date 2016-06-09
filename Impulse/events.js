@@ -331,16 +331,20 @@ function ImpulseEvents(template, controller) {
         break;
 
       case buttons.bankUp:
-        controller.trackBankPage = Math.max(0, controller.trackBankPage - 1);
-        controller.trackBank.scrollTracksPageUp();
-        controller.displayText("Bank " + (controller.trackBankPage + 1))
+        if (controller.trackBankPage > 0) {
+          controller.trackBankPage = controller.trackBankPage - 1;
+          controller.trackBank.scrollTracksPageUp();
+        }
+        controller.displayText("Bank " + (controller.trackBankPage + 1) + "/" + (controller.maxTrackBankPage + 1))
         host.showPopupNotification("Track Bank: " + (controller.trackBankPage + 1));
         break;
 
       case buttons.bankDown:
-        controller.trackBankPage = controller.trackBankPage + 1;
-        controller.trackBank.scrollTracksPageDown();
-        controller.displayText("Bank " + (controller.trackBankPage + 1))
+        if (controller.trackBankPage < controller.maxTrackBankPage) {
+          controller.trackBankPage = controller.trackBankPage + 1;
+          controller.trackBank.scrollTracksPageDown();
+        }
+        controller.displayText("Bank " + (controller.trackBankPage + 1) + "/" + (controller.maxTrackBankPage + 1))
         host.showPopupNotification("Track Bank: " + (controller.trackBankPage + 1));
         break;
 

@@ -9,6 +9,8 @@ function BitwigController() {
   this.tracks = [{}, {}, {}, {}, {}, {}, {}, {}];
   this.master = {};
 
+  this.maxTrackBankPage = 0;
+
   // Device state values.
   this.shiftPressed = false;
   this.loopPressed = false;
@@ -161,7 +163,9 @@ function BitwigController() {
     this.application = host.createApplication();
 
     this.trackBank.addChannelCountObserver(function(count) {
-        controller.trackBankSize = count;
+        var withoutMaster = count - 1;
+        var max = parseInt((withoutMaster - 1) / 8);
+        controller.maxTrackBankPage = max;
     });
 
     /*
