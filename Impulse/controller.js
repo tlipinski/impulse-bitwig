@@ -18,7 +18,7 @@ function BitwigController() {
   this.rewindPressed = false;
   this.rotaryState = 'plugin';
   this.mixerPage = 0;
-  this.mixerPages = ['Mixer', 'Pan', 'Send', 'Record', 'Solo', 'Mute'];
+  this.mixerPages = ['Pan', 'Send', 'Record'];
   this.dawMode = false;
   this.faderButtonMode = 'mute';
 
@@ -436,4 +436,12 @@ function BitwigController() {
     controller.refreshFaderButtons();
     controller.printTracks();
   };
+
+  this.upWrap = function(current, max) {
+    return (current + max - 1) % max;
+  }
+
+  this.downWrap = function(current, max) {
+    return (current + 1) % max;
+  }
 }

@@ -223,32 +223,20 @@ function ImpulseEvents(template, controller) {
     }
     delta = data2 - 64;
 
-    switch (controller.mixerPage) {
-      case 0:
-        track.getVolume().inc(delta, 100);
-        break;
-
-      case 1:
+    switch (controller.mixerPages[controller.mixerPage]) {
+      case 'Pan':
         track.getPan().inc(delta, 100);
         break;
 
-      case 2:
+      case 'Send':
         target = track.getSend(0);
         if (target) {
           target.inc(delta, 100);
         }
         break;
 
-      case 3:
+      case 'Record':
         track.arm.set(delta > 0);
-        break;
-
-      case 4:
-        track.solo.set(delta > 0);
-        break;
-
-      case 5:
-        track.mute.set(delta > 0);
         break;
     }
   };
@@ -351,13 +339,7 @@ function ImpulseEvents(template, controller) {
       case buttons.pageUp:
         switch (controller.rotaryState) {
           case 'mixer':
-            controller.mixerPage++;
-            if (controller.mixerPage < 0) {
-              controller.mixerPage = controller.mixerPages.length - 1;
-            }
-            else if (controller.mixerPage >= controller.mixerPages.length) {
-              controller.mixerPage = 0;
-            }
+            controller.mixerPage = controller.upWrap(controller.mixerPage, controller.mixerPages.length);
             controller.displayText(controller.mixerPages[controller.mixerPage]);
             controller.highlightModifyableTracks();
             break;  
@@ -367,13 +349,7 @@ function ImpulseEvents(template, controller) {
       case buttons.pageDown:
         switch (controller.rotaryState) {
           case 'mixer':
-            controller.mixerPage--;
-            if (controller.mixerPage < 0) {
-              controller.mixerPage = controller.mixerPages.length - 1;
-            }
-            else if (controller.mixerPage >= controller.mixerPages.length) {
-              controller.mixerPage = 0;
-            }
+            controller.mixerPage = controller.downWrap(controller.mixerPage, controller.mixerPages.length);
             controller.displayText(controller.mixerPages[controller.mixerPage]);
             controller.highlightModifyableTracks();
             break;  
