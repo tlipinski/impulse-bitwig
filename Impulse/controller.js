@@ -350,7 +350,8 @@ function BitwigController() {
   this.createNoteInputs = function() {
     for (var i=0;i<this.device.numMidiOutPorts;i++) {
       // Set up note input to ignore the last midi channel.
-      this.noteInputs[i] = this.midiIns[i].createNoteInput('Impulse keyboard ' + i);
+      //this.noteInputs[i] = this.midiIns[i].createNoteInput('Impulse keyboard ' + i);
+      this.noteInputs[i] = this.midiIns[i].createNoteInput('Impulse keyboard ' + i, '90????', '80????', 'D0????');
 
 
       // For some reason, when creating a note input the rotary 2 would stop working
@@ -359,7 +360,7 @@ function BitwigController() {
       // We work around this by telling bitwig, that the note inputs should not
       // consume the midi events, which means that all midi events get passed along
       // to our midi callbacks.
-      this.noteInputs[i].setShouldConsumeEvents(false);
+      this.noteInputs[i].setShouldConsumeEvents(true);
     }
   };
 
