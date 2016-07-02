@@ -351,7 +351,13 @@ function BitwigController() {
     for (var i=0;i<this.device.numMidiOutPorts;i++) {
       // Set up note input to ignore the last midi channel.
       //this.noteInputs[i] = this.midiIns[i].createNoteInput('Impulse keyboard ' + i);
-      this.noteInputs[i] = this.midiIns[i].createNoteInput('Impulse keyboard ' + i, '90????', '80????', 'D0????');
+      var notePress = "90????";
+      var noteRelease = "80????";
+      var aftertouch = "D0????";
+      var pitchWheel = "E0????";
+      var modWheel = "B201??";
+
+      this.noteInputs[i] = this.midiIns[i].createNoteInput('Impulse keyboard ' + i, notePress, noteRelease, aftertouch, pitchWheel, modWheel);
 
 
       // For some reason, when creating a note input the rotary 2 would stop working
