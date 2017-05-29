@@ -1,3 +1,3 @@
-# Impulse49 Bitwig
+# Impulse49 Bitwig - no longer maintained
 
-Fork of https://github.com/martinwittmann/impulse-bitwig repo adding features for Impulse 49.
+Check new script based on Java API https://github.com/tlipinski/bitwig-novation-impulse
